@@ -1,0 +1,100 @@
+/* Estilos globales. CSS plano a propósito: sin frameworks que aprender. */
+:root {
+  --fondo: #f4f6f9;
+  --superficie: #ffffff;
+  --texto: #1f2933;
+  --tenue: #6b7785;
+  --borde: #dde3ea;
+  --primario: #3b7ddd;
+  --peligro: #c0392b;
+  --exito: #1e8e5a;
+  --riesgo: #fdecea;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--texto);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--fondo); }
+h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.1rem; margin: 0 0 .75rem; }
+a { color: var(--primario); }
+code { background: #eef1f5; padding: 0 .3rem; border-radius: 4px; }
+
+/* ---- Estructura ---- */
+.barra { display: flex; align-items: center; gap: 1.5rem; padding: .75rem 1.5rem; background: var(--superficie); border-bottom: 1px solid var(--borde); flex-wrap: wrap; }
+.marca { font-weight: 700; text-decoration: none; color: var(--texto); }
+.barra nav { display: flex; gap: 1rem; flex: 1; }
+.barra nav a { text-decoration: none; color: var(--tenue); }
+.barra nav a.active { color: var(--primario); font-weight: 600; }
+.usuario { color: var(--tenue); font-size: .9rem; }
+.contenido { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.panel { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 1.25rem; margin-top: 1rem; overflow-x: auto; }
+.encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.centro { text-align: center; margin-top: 3rem; }
+.tenue { color: var(--tenue); }
+.pantalla-centro { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
+.caja { width: 100%; max-width: 380px; background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 2rem; display: flex; flex-direction: column; gap: .9rem; }
+.caja form { display: flex; flex-direction: column; gap: .9rem; }
+
+/* ---- Tarjetas ---- */
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .3rem; }
+.tarjeta span { color: var(--tenue); font-size: .85rem; }
+.tarjeta strong { font-size: 1.8rem; }
+.tarjeta strong.mediano { font-size: 1.1rem; }
+.tarjeta.alerta strong { color: var(--peligro); }
+.enlace-tarjeta { text-decoration: none; color: inherit; transition: border-color .15s; }
+.enlace-tarjeta:hover { border-color: var(--primario); }
+
+/* ---- Formularios y botones ---- */
+label { display: flex; flex-direction: column; gap: .3rem; font-size: .9rem; }
+input, select { font: inherit; padding: .55rem .7rem; border: 1px solid var(--borde); border-radius: 6px; background: #fff; }
+input:focus, select:focus { outline: 2px solid var(--primario); outline-offset: -1px; }
+button, .boton, .boton-archivo { font: inherit; padding: .5rem .9rem; border: 1px solid var(--borde); border-radius: 6px; background: #fff; cursor: pointer; text-decoration: none; color: var(--texto); display: inline-block; text-align: center; }
+button:hover, .boton:hover, .boton-archivo:hover { background: #f0f3f7; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primario { background: var(--primario); border-color: var(--primario); color: #fff; }
+button.primario:hover { filter: brightness(1.08); }
+button.peligro { color: var(--peligro); }
+button.enlace { border: none; background: none; color: var(--primario); padding: 0 .4rem; }
+.fila { display: flex; gap: .6rem; flex-wrap: wrap; }
+.fila input, .fila select { flex: 1; min-width: 160px; }
+.botones { display: flex; gap: .4rem; flex-wrap: wrap; }
+.botones.columna { flex-direction: column; }
+.buscador { width: 100%; max-width: 320px; margin-bottom: .75rem; }
+.matricula { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+
+/* ---- Tablas ---- */
+table { width: 100%; border-collapse: collapse; font-size: .92rem; margin-top: .5rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--borde); }
+th { color: var(--tenue); font-weight: 600; font-size: .8rem; text-transform: uppercase; }
+tr.riesgo { background: var(--riesgo); }
+.pct { font-weight: 600; }
+.pct.bajo { color: var(--peligro); }
+.etiqueta { font-size: .78rem; padding: .1rem .5rem; border-radius: 99px; background: #eef1f5; color: var(--tenue); }
+.etiqueta.verde { background: #e3f5ec; color: var(--exito); }
+
+/* ---- Mensajes ---- */
+.error { color: var(--peligro); background: var(--riesgo); padding: .6rem .8rem; border-radius: 6px; margin: .5rem 0; }
+.exito { color: var(--exito); background: #e3f5ec; padding: .6rem .8rem; border-radius: 6px; margin: .5rem 0; }
+.exito.grande { font-size: 1.15rem; text-align: center; }
+.exito.grande p { margin: .3rem 0; }
+
+/* ---- Proyector ---- */
+.proyector { min-height: 100vh; display: grid; grid-template-columns: 1fr 320px; background: #fff; }
+.proyector-qr { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; gap: .4rem; }
+.proyector-qr h1 { font-size: 2.2rem; }
+.qr-marco { padding: 1rem; border: 1px solid var(--borde); border-radius: 16px; margin: 1rem 0; }
+.qr-marco svg { width: min(60vh, 70vw); height: auto; display: block; }
+.cerrada { font-size: 2rem; color: var(--tenue); margin-top: 2rem; }
+.proyector-lado { background: var(--fondo); border-left: 1px solid var(--borde); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; max-height: 100vh; }
+.contador { text-align: center; font-size: 1.4rem; color: var(--tenue); }
+.contador strong { font-size: 4rem; color: var(--exito); display: block; line-height: 1; }
+.contador span { display: block; font-size: .95rem; }
+.lista-manual { list-style: none; padding: 0; margin: 0; font-size: .9rem; }
+.lista-manual li { padding: .3rem 0; border-bottom: 1px solid var(--borde); }
+.lista-manual label { flex-direction: row; align-items: center; gap: .5rem; }
+
+@media (max-width: 800px) {
+  .proyector { grid-template-columns: 1fr; }
+  .proyector-lado { border-left: none; border-top: 1px solid var(--borde); max-height: none; }
+}

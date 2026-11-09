@@ -1,0 +1,14 @@
+# Levantar todo:  docker compose up -d --build
+# La app queda en http://localhost:8000 (o http://IP-del-VPS:8000).
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - datos:/app/data   # la base de datos SQLite sobrevive a reinicios y rebuilds
+    restart: unless-stopped
+
+volumes:
+  datos:
