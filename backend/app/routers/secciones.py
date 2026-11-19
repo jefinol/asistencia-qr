@@ -56,6 +56,11 @@ def crear(datos: SeccionIn, db: Session = Depends(get_db), coord: Usuario = Depe
     return seccion
 
 
+@router.get("/secciones/{seccion_id}", response_model=SeccionOut)
+def ver(seccion_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+    return obtener_seccion(db, seccion_id, usuario)
+
+
 @router.put("/secciones/{seccion_id}", response_model=SeccionOut)
 def editar(seccion_id: int, datos: SeccionIn, db: Session = Depends(get_db),
            coord: Usuario = Depends(solo_coordinador)):

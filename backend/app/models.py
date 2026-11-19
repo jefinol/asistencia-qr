@@ -27,6 +27,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from .config import hoy
 from .database import Base
 
 
@@ -118,7 +119,7 @@ class Clase(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     seccion_id: Mapped[int] = mapped_column(ForeignKey("secciones.id", ondelete="CASCADE"))
-    fecha: Mapped[date] = mapped_column(Date, default=date.today)
+    fecha: Mapped[date] = mapped_column(Date, default=hoy)  # hora de la institución, no del servidor
     tema: Mapped[str] = mapped_column(String(200), default="")
     abierta: Mapped[bool] = mapped_column(default=True)
     # Secreto propio de la clase con el que se derivan los códigos rotativos del QR.

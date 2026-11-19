@@ -33,9 +33,22 @@ class LoginOut(BaseModel):
 
 
 class DocenteIn(BaseModel):
+    """Alta de un docente por parte del coordinador."""
     usuario: str = Field(min_length=3, max_length=50)
     nombre: str = Field(min_length=3, max_length=120)
     clave: str = Field(min_length=6)
+
+
+class DocenteEditar(BaseModel):
+    """Edición de un docente. Si `clave` viene vacía, no se cambia (sirve para reiniciarla)."""
+    nombre: str = Field(min_length=3, max_length=120)
+    clave: str | None = Field(default=None, min_length=6)
+
+
+class CambioClave(BaseModel):
+    """Cambio de la propia clave."""
+    clave_actual: str
+    clave_nueva: str = Field(min_length=6)
 
 
 # ---------- Secciones ----------

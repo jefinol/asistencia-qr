@@ -43,6 +43,7 @@ Es un **monolito**: un repositorio, una imagen Docker, un proceso. FastAPI sirve
 - Sin Alembic (migraciones): `create_all` crea las tablas. Si el esquema cambia en producción, se añadiría Alembic en ese momento.
 - Sin librería de estado global (Redux, etc.): un `Context` para el usuario y `useState` local alcanzan.
 - Sin framework CSS: un único `styles.css`.
+- Un solo coordinador, creado al arrancar desde `ADMIN_USUARIO` / `ADMIN_CLAVE`. El coordinador gestiona docentes, pero no crea otros coordinadores. En un escenario real habría un superusuario (el departamento de Control de Estudios) encargado de dar de alta a los coordinadores; eso queda fuera del alcance de este MVP. El modelo de datos ya guarda el coordinador de cada sección, así que añadirlo después no exige rediseñar.
 
 ## 3. Modelo de datos
 
@@ -134,11 +135,15 @@ Complejidad: **O(A + E + C)** — lineal.
 
 | Rol | Puede |
 |---|---|
-| Coordinador | Crear/editar/eliminar **sus** secciones, registrar docentes, cargar/retirar estudiantes, ver estadísticas generales y de cada sección, exportar reportes, abrir clases. |
+| Coordinador | Crear/editar/eliminar **sus** secciones (incluido cambiar el docente sin perder asistencias), gestionar docentes (crear, renombrar, reiniciar clave, eliminar), cambiar su propia clave, cargar/retirar estudiantes, ver estadísticas generales y de cada sección, exportar reportes, abrir clases. |
 | Docente | Ver **solo las secciones que dicta**, abrir/cerrar clases, proyectar QR, pasar lista manual, ver estadísticas y exportar reportes. |
 | Alumno (anónimo) | Ver el nombre de la clase y marcar asistencia con su cédula, solo con un código vigente. |
 
 - Si un usuario pide una sección ajena, la API responde **404** (no revela que existe).
+- Al eliminar un docente, sus secciones quedan "sin asignar" en lugar de borrarse: nunca se pierden asistencias. Las rutas de gestión solo operan sobre docentes: el coordinador no puede editarse ni eliminarse a través de ellas (solo cambiar su propia clave).
+
+## 6.1 Fechas y zona horaria
+Cada clase guarda su fecha según `ZONA_HORARIA` (por defecto `America/Caracas`), no según el reloj del servidor. Los contenedores Docker y la mayoría de los VPS usan UTC; sin esto, una clase nocturna (después de las 8:00 p. m. en Venezuela, UTC−4) quedaría registrada con la fecha del día siguiente. La función `hoy()` de `config.py` centraliza este cálculo; las horas exactas de marcaje se guardan en UTC, que es lo estándar.
 - Contraseñas con PBKDF2-SHA256, 200 000 iteraciones y sal aleatoria.
 - `SECRET_KEY` firma los JWT; **debe** cambiarse en producción (`.env`).
 
@@ -149,7 +154,10 @@ La documentación completa e interactiva está en `/docs` con el servidor corrie
 | Método | Ruta | Quién |
 |---|---|---|
 | POST | `/api/auth/login` | todos |
+| PUT | `/api/auth/clave` (cambiar la propia clave) | todos |
 | GET/POST | `/api/docentes` | coordinador |
+| PUT/DELETE | `/api/docentes/{id}` (renombrar, reiniciar clave, eliminar) | coordinador |
+| GET | `/api/secciones/{id}` | ambos |
 | GET/POST | `/api/secciones` | GET ambos (filtrado por rol), POST coordinador |
 | PUT/DELETE | `/api/secciones/{id}` | coordinador |
 | POST | `/api/secciones/{id}/matricula` | coordinador |
@@ -168,6 +176,7 @@ La documentación completa e interactiva está en `/docs` con el servidor corrie
 `backend/tests/` contiene:
 - `test_servicios.py`: pruebas unitarias del algoritmo del QR y del lector de matrícula.
 - `test_flujo.py`: recorrido completo por la API (crear docente y sección → cargar matrícula → abrir clase → alumnos marcan → estadísticas → PDF/Excel), con base de datos temporal.
+- `test_usuarios.py`: cambio y reinicio de claves, alcance (solo se gestionan docentes), eliminación de docentes, edición de secciones y fecha según la zona horaria.
 
 ```bash
 cd backend && uv run pytest

@@ -12,6 +12,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "openpyxl>=3.1",
     "fpdf2>=2.7",
+    "tzdata",  # base de zonas horarias (Windows y la imagen slim no la traen)
 ]
 
 [dependency-groups]

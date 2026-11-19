@@ -5,7 +5,9 @@ código. En producción (VPS) se definen en el archivo `.env` que lee docker com
 """
 import os
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # carpeta backend/
 
@@ -27,6 +29,14 @@ class Settings:
     # Coordinador inicial que se crea si la base de datos está vacía.
     admin_usuario: str = os.getenv("ADMIN_USUARIO", "coordinador")
     admin_clave: str = os.getenv("ADMIN_CLAVE", "coordinador123")
+    # Zona horaria de la institución. Decide qué "día" es cada clase, sin
+    # depender de la hora del servidor (los contenedores Docker suelen estar en UTC).
+    zona_horaria: str = os.getenv("ZONA_HORARIA", "America/Caracas")
 
 
 settings = Settings()
+
+
+def hoy() -> date:
+    """Fecha actual en la zona horaria de la institución."""
+    return datetime.now(ZoneInfo(settings.zona_horaria)).date()

@@ -28,6 +28,8 @@ code { background: #eef1f5; padding: 0 .3rem; border-radius: 4px; }
 .usuario { color: var(--tenue); font-size: .9rem; }
 .contenido { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 .panel { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 1.25rem; margin-top: 1rem; overflow-x: auto; }
+.panel.angosto { max-width: 420px; }
+form.columna { display: flex; flex-direction: column; gap: .8rem; }
 .encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
 .centro { text-align: center; margin-top: 3rem; }
 .tenue { color: var(--tenue); }

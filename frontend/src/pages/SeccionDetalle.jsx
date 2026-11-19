@@ -1,6 +1,6 @@
 // Dashboard de una sección: estadísticas, clases, estudiantes, reportes.
 // Lo usan el docente (para su sección) y el coordinador (al escoger una sección).
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, descargar } from '../api.js'
 import { useAuth } from '../auth.jsx'
@@ -14,6 +14,7 @@ export default function SeccionDetalle() {
   const { datos: est, error, recargar } = useApi(`/secciones/${seccionId}/estadisticas`)
   const [tema, setTema] = useState('')
   const [aviso, setAviso] = useState('')
+  const [editando, setEditando] = useState(false)
 
   if (error) return <Error texto={error} />
   if (!est) return <p>Cargando…</p>
@@ -52,10 +53,15 @@ export default function SeccionDetalle() {
         <div className="botones">
           <button onClick={accion(() => descargar(`/secciones/${seccionId}/reporte?formato=pdf`))}>⬇ PDF</button>
           <button onClick={accion(() => descargar(`/secciones/${seccionId}/reporte?formato=excel`))}>⬇ Excel</button>
+          {esCoordinador && <button onClick={() => setEditando(!editando)}>✎ Editar</button>}
           {esCoordinador && <button className="peligro" onClick={eliminarSeccion}>Eliminar sección</button>}
         </div>
       </div>
       <Error texto={aviso} />
+      {editando && (
+        <EditarSeccion seccionId={seccionId}
+          alGuardar={() => { setEditando(false); recargar() }} alCancelar={() => setEditando(false)} />
+      )}
 
       <div className="tarjetas">
         <Tarjeta titulo="Estudiantes" valor={r.total_estudiantes} />
@@ -89,6 +95,53 @@ export default function SeccionDetalle() {
           })} />
       </section>
     </>
+  )
+}
+
+/** Formulario del coordinador para cambiar código, asignatura o docente sin perder asistencias. */
+function EditarSeccion({ seccionId, alGuardar, alCancelar }) {
+  const { datos: docentes } = useApi('/docentes')
+  const [form, setForm] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api(`/secciones/${seccionId}`)
+      .then((s) => setForm({ codigo: s.codigo, asignatura: s.asignatura, docente_id: s.docente?.id ?? '' }))
+      .catch((e) => setError(e.message))
+  }, [seccionId])
+
+  async function guardar(e) {
+    e.preventDefault()
+    setError('')
+    try {
+      await api(`/secciones/${seccionId}`, {
+        method: 'PUT',
+        body: { ...form, docente_id: form.docente_id ? Number(form.docente_id) : null },
+      })
+      alGuardar()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  if (!form) return <Error texto={error} />
+  return (
+    <section className="panel">
+      <h2>Editar sección</h2>
+      <form className="fila" onSubmit={guardar}>
+        <input placeholder="Código" value={form.codigo} required
+          onChange={(e) => setForm({ ...form, codigo: e.target.value })} />
+        <input placeholder="Asignatura" value={form.asignatura} required
+          onChange={(e) => setForm({ ...form, asignatura: e.target.value })} />
+        <select value={form.docente_id} onChange={(e) => setForm({ ...form, docente_id: e.target.value })}>
+          <option value="">— Sin docente —</option>
+          {docentes?.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+        </select>
+        <button className="primario">Guardar</button>
+        <button type="button" onClick={alCancelar}>Cancelar</button>
+      </form>
+      <Error texto={error} />
+    </section>
   )
 }
 

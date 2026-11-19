@@ -29,7 +29,7 @@ export function Layout() {
           {usuario.rol === 'coordinador' && <NavLink to="/docentes">Docentes</NavLink>}
         </nav>
         <span className="usuario">
-          {usuario.nombre} · <em>{usuario.rol}</em>
+          <Link to="/cuenta" title="Mi cuenta">{usuario.nombre}</Link> · <em>{usuario.rol}</em>
           <button className="enlace" onClick={salir}>Salir</button>
         </span>
       </header>

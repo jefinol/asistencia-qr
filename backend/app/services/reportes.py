@@ -6,12 +6,12 @@ solo pide `GENERADORES[formato]` y llama a `.generar(reporte)`.
 """
 import io
 from abc import ABC, abstractmethod
-from datetime import date
 
 from fpdf import FPDF
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
+from ..config import hoy
 from .estadisticas import ReporteSeccion
 
 
@@ -23,7 +23,7 @@ class GeneradorReporte(ABC):
     def generar(self, reporte: ReporteSeccion) -> bytes: ...
 
     def nombre_archivo(self, reporte: ReporteSeccion) -> str:
-        return f"asistencia_{reporte.resumen.codigo}_{date.today():%Y%m%d}.{self.extension}"
+        return f"asistencia_{reporte.resumen.codigo}_{hoy():%Y%m%d}.{self.extension}"
 
 
 class GeneradorExcel(GeneradorReporte):
@@ -83,7 +83,7 @@ class GeneradorPDF(GeneradorReporte):
             f"Docente: {r.docente or '-'}",
             f"Estudiantes: {r.total_estudiantes}   Clases: {r.total_clases}   "
             f"Promedio: {r.promedio_asistencia}%   En riesgo (<75%): {r.estudiantes_en_riesgo}",
-            f"Generado: {date.today():%d/%m/%Y}",
+            f"Generado: {hoy():%d/%m/%Y}",
         ):
             pdf.cell(0, 6, linea, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(4)

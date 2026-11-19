@@ -2,7 +2,7 @@
 
 Sistema de control de asistencia por código QR. Proyecto final de Programación III.
 
-- El **coordinador** crea secciones (código + asignatura), registra docentes y carga la matrícula (CSV/Excel).
+- El **coordinador** crea y edita secciones (código + asignatura + docente), gestiona a los docentes (incluido reiniciar claves olvidadas) y carga la matrícula (CSV/Excel).
 - El **docente** inicia una clase y proyecta un QR que **cambia cada 30 s**.
 - El **alumno** escanea el QR con su teléfono, escribe su cédula y queda marcado. No necesita cuenta.
 - Docente y coordinador ven dashboards con porcentajes de asistencia y exportan reportes en **PDF** o **Excel**.
@@ -29,7 +29,7 @@ asistencia-qr/
 │       ├── api.js           cliente HTTP
 │       ├── auth.jsx         sesión del usuario
 │       ├── components.jsx   piezas reutilizables (tarjetas, gráfico…)
-│       └── pages/           Login, Inicio, SeccionDetalle, Proyectar, Asistir, Docentes
+│       └── pages/           Login, Inicio, SeccionDetalle, Proyectar, Asistir, Docentes, Cuenta
 ├── ejemplos/                archivo de matrícula de ejemplo
 ├── docs/ARQUITECTURA.md
 ├── Dockerfile               imagen única (build de React + backend)
@@ -110,7 +110,7 @@ docker compose cp app:/app/data/asistencia.db ./respaldo.db
 
 ## Flujo de uso
 
-1. Entrar como coordinador → **Docentes** → registrar a los profesores.
+1. Entrar como coordinador → **Docentes** → registrar a los profesores. Cada quien puede cambiar su clave haciendo clic en su nombre (arriba a la derecha); si un docente la olvida, el coordinador se la reinicia desde **Docentes → Editar / clave**.
 2. **Inicio** → *Nueva sección* (código, asignatura, docente).
 3. Abrir la sección → **Cargar matrícula** (ver `ejemplos/matricula_ejemplo.csv`; columnas `nombres, apellidos, cedula`).
 4. El docente entra, abre su sección → **Iniciar y proyectar QR**.

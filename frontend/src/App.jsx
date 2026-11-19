@@ -7,6 +7,7 @@ import { Layout } from './components.jsx'
 import Login from './pages/Login.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Docentes from './pages/Docentes.jsx'
+import Cuenta from './pages/Cuenta.jsx'
 import SeccionDetalle from './pages/SeccionDetalle.jsx'
 import Proyectar from './pages/Proyectar.jsx'
 import Asistir from './pages/Asistir.jsx'
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/" element={<Inicio />} />
         <Route path="/secciones/:seccionId" element={<SeccionDetalle />} />
         <Route path="/docentes" element={<Privada rol="coordinador"><Docentes /></Privada>} />
+        <Route path="/cuenta" element={<Cuenta />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
