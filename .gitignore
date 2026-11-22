@@ -10,6 +10,9 @@ backend/static/
 node_modules/
 frontend/dist/
 
+# Matrículas reales (datos personales: nunca subirlas al repo)
+datos/
+
 # Entorno
 .env
 .DS_Store

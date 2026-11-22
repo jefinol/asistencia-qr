@@ -105,11 +105,11 @@ Navegador ──► Vercel ─┬─ CDN: frontend React (frontend/dist)
 
 Archivos que lo hacen posible (ya están en el repo):
 
-| Archivo | Para qué |
-|---|---|
-| `vercel.json` | Compila el frontend con Vite, manda `/api/*` a la función Python y el resto a `index.html`. |
-| `api/index.py` | Función serverless: importa la misma app FastAPI de `backend/app/`. |
-| `requirements.txt` | Dependencias de Python que instala Vercel (generado desde `backend/uv.lock`). |
+| Archivo              | Para qué                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `vercel.json`      | Compila el frontend con Vite, manda `/api/*` a la función Python y el resto a `index.html`. |
+| `api/index.py`     | Función serverless: importa la misma app FastAPI de `backend/app/`.                           |
+| `requirements.txt` | Dependencias de Python que instala Vercel (generado desde `backend/uv.lock`).                  |
 
 ### 1. Crear la base de datos en Supabase
 
@@ -130,20 +130,20 @@ No hace falta crear tablas: la app las crea sola en la primera petición, junto 
 2. Deja **Root Directory** en la raíz del repo. La configuración de build se toma de `vercel.json`, así que no hay que tocar nada más.
 3. En **Environment Variables**, agrega:
 
-   | Variable | Valor |
-   |---|---|
-   | `DATABASE_URL` | la cadena del pooler de Supabase (paso 1) |
-   | `SECRET_KEY` | una clave larga y aleatoria (comando abajo) |
-   | `ADMIN_USUARIO` | `coordinador` (o el que prefieran) |
-   | `ADMIN_CLAVE` | la clave inicial del coordinador |
-   | `ZONA_HORARIA` | `America/Caracas` |
+   | Variable          | Valor                                       |
+   | ----------------- | ------------------------------------------- |
+   | `DATABASE_URL`  | la cadena del pooler de Supabase (paso 1)   |
+   | `SECRET_KEY`    | una clave larga y aleatoria (comando abajo) |
+   | `ADMIN_USUARIO` | `coordinador` (o el que prefieran)        |
+   | `ADMIN_CLAVE`   | la clave inicial del coordinador            |
+   | `ZONA_HORARIA`  | `America/Caracas`                         |
 
    Para generar la `SECRET_KEY`:
+
 
    ```bash
    python -c "import secrets; print(secrets.token_urlsafe(32))"
    ```
-
 4. Pulsa **Deploy**. Al terminar, Vercel te da una URL `https://<proyecto>.vercel.app` con HTTPS incluido. Entra con `ADMIN_USUARIO` / `ADMIN_CLAVE` y cambia la clave desde "Mi cuenta".
 
 A partir de ahí, **cada `git push` a `main` vuelve a desplegar automáticamente**.
