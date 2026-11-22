@@ -20,15 +20,23 @@ Este documento explica **qué** elegimos y **por qué**, para que cualquier inte
               └─────────────────────────────────────────────────┘
 ```
 
-Es un **monolito**: un repositorio, una imagen Docker, un proceso. FastAPI sirve tanto la API (`/api/...`) como el frontend compilado (cualquier otra ruta). No hay CORS que configurar, ni dos servidores que desplegar.
+Es un **monolito**: un repositorio, una sola app FastAPI. En local y en Docker, un mismo proceso sirve la API (`/api/...`) y el frontend compilado (cualquier otra ruta). En producción (Vercel) la app es la misma: Vercel sirve el frontend desde su CDN y ejecuta la API como función serverless (`api/index.py` importa `backend/app`). Todo queda bajo el mismo dominio, así que no hay CORS que configurar.
+
+```
+Producción:  Navegador ──► Vercel ─┬─ CDN: frontend React
+                                   └─ /api/* ─► función Python (FastAPI)
+                                                       │
+                                                       ▼
+                                         Supabase (PostgreSQL, pooler 6543)
+```
 
 ## 2. Decisiones de tecnología
 
 | Decisión | Elegido | Alternativa descartada | Motivo |
 |---|---|---|---|
-| Framework backend | **FastAPI** | Flask | Valida el JSON automáticamente con Pydantic (menos código de validación), genera documentación interactiva en `/docs` (muy útil para la presentación y para que el equipo pruebe la API) y usa *type hints*, que hacen el código más legible. Para una API JSON + SPA es la opción más directa. |
+| Framework backend | **FastAPI** | Flask | Valida el JSON automáticamente con Pydantic (menos código de validación), genera documentación interactiva en `/api/docs` (muy útil para la presentación y para que el equipo pruebe la API) y usa *type hints*, que hacen el código más legible. Para una API JSON + SPA es la opción más directa. |
 | Frontend | **React + Vite** | Next.js | Next.js necesita su propio servidor Node (SSR) y rompería el monolito. Vite solo compila React a archivos estáticos que FastAPI sirve. Mismo React, mucho menos peso. |
-| Base de datos | **SQLite** | PostgreSQL | Un archivo, cero configuración, cero contenedores extra. Soporta sin problema el volumen de una universidad (cientos de escrituras por minuto). Gracias al ORM, migrar a PostgreSQL es cambiar `DATABASE_URL`. |
+| Base de datos | **SQLite** en local, **PostgreSQL (Supabase)** en producción | Solo una de las dos | SQLite es un archivo, sin configuración: ideal para desarrollar. En Vercel no hay disco persistente, así que producción usa el PostgreSQL gratuito de Supabase. Gracias al ORM, el código es el mismo: solo cambia `DATABASE_URL`. Las pruebas se corren contra ambos motores. |
 | ORM | **SQLAlchemy 2.0** | SQL a mano | Clases Python ↔ tablas (POO), protección contra inyección SQL, independencia del motor. |
 | Autenticación | **JWT + PBKDF2** (librería estándar) | sesiones en servidor, bcrypt | JWT no requiere guardar sesiones. PBKDF2 viene con Python (sin dependencias nativas) y es recomendado por OWASP. |
 | Alumnos | **Sin cuenta**, solo cédula | Login por alumno | Lo pidió la especificación y reduce fricción en el aula: escanear → cédula → listo. |
@@ -36,7 +44,8 @@ Es un **monolito**: un repositorio, una imagen Docker, un proceso. FastAPI sirve
 | Gráficos | **Recharts** | Chart.js, D3 | Componentes React declarativos; un gráfico de barras en ~15 líneas. |
 | Reportes | **openpyxl** (Excel) + **fpdf2** (PDF) | ReportLab, pandas | Ambas son puras Python y pequeñas. pandas sería sobredimensionado. |
 | Dependencias Python | **uv** | pip + requirements.txt | Un solo comando (`uv sync`) crea el `.venv` e instala versiones exactas (`uv.lock`), tanto en local como en Docker. |
-| Despliegue | **Docker multi-etapa + compose** | Instalar a mano en el VPS | `docker compose up -d --build` y listo. La BD vive en un volumen. |
+| Despliegue | **Vercel (Hobby) + Supabase (Free)** | VPS propio | Gratis, con HTTPS y dominio `*.vercel.app` incluidos, y redespliegue automático en cada `git push`. Docker sigue sirviendo para desarrollar en local y como alternativa en un VPS. |
+| Conexión a Supabase | **Pooler en modo transacción (6543) + `NullPool`** | Conexión directa | Supabase lo recomienda para serverless, que abre muchas conexiones cortas. La conexión directa es solo IPv6 en el plan gratuito. Ese modo no admite *prepared statements*, así que se desactivan (`prepare_threshold=None`). |
 
 ### Lo que NO hicimos a propósito (evitar overengineering)
 - Sin microservicios, colas, Redis ni WebSockets: el proyector consulta la API cada 2 s (*polling*), que para un aula es trivial.
@@ -135,8 +144,8 @@ Complejidad: **O(A + E + C)** — lineal.
 
 | Rol | Puede |
 |---|---|
-| Coordinador | Crear/editar/eliminar **sus** secciones (incluido cambiar el docente sin perder asistencias), gestionar docentes (crear, renombrar, reiniciar clave, eliminar), cambiar su propia clave, cargar/retirar estudiantes, ver estadísticas generales y de cada sección, exportar reportes, abrir clases. |
-| Docente | Ver **solo las secciones que dicta**, abrir/cerrar clases, proyectar QR, pasar lista manual, ver estadísticas y exportar reportes. |
+| Coordinador | Crear/editar/eliminar **sus** secciones (incluido cambiar el docente sin perder asistencias), gestionar docentes (crear, renombrar, reiniciar clave, eliminar), cambiar su propia clave, cargar/retirar estudiantes, ver estadísticas generales y de cada sección (incluido el historial de clases), exportar reportes. **No** inicia clases ni proyecta el QR: eso le corresponde al docente. |
+| Docente | Ver **solo las secciones que dicta**. Es el **único** que inicia, cierra, reabre y elimina clases, proyecta el QR y pasa lista manual. También ve estadísticas y exporta reportes. |
 | Alumno (anónimo) | Ver el nombre de la clase y marcar asistencia con su cédula, solo con un código vigente. |
 
 - Si un usuario pide una sección ajena, la API responde **404** (no revela que existe).
@@ -149,7 +158,7 @@ Cada clase guarda su fecha según `ZONA_HORARIA` (por defecto `America/Caracas`)
 
 ## 7. API (resumen)
 
-La documentación completa e interactiva está en `/docs` con el servidor corriendo.
+La documentación completa e interactiva está en `/api/docs` con el servidor corriendo.
 
 | Método | Ruta | Quién |
 |---|---|---|
@@ -164,10 +173,11 @@ La documentación completa e interactiva está en `/docs` con el servidor corrie
 | GET | `/api/secciones/{id}/estadisticas` | ambos |
 | GET | `/api/secciones/{id}/reporte?formato=pdf\|excel` | ambos |
 | GET | `/api/estadisticas/general` | coordinador |
-| GET/POST | `/api/secciones/{id}/clases` | ambos |
-| GET | `/api/clases/{id}/qr` | ambos |
-| POST | `/api/clases/{id}/cerrar` · `/reabrir` | ambos |
-| GET/PUT | `/api/clases/{id}/asistentes[/{estudiante}]` | ambos |
+| GET | `/api/secciones/{id}/clases` (historial) | ambos |
+| POST | `/api/secciones/{id}/clases` (iniciar clase) | docente |
+| GET | `/api/clases/{id}/qr` | docente |
+| POST | `/api/clases/{id}/cerrar` · `/reabrir` | docente |
+| GET/PUT | `/api/clases/{id}/asistentes[/{estudiante}]` | docente |
 | GET | `/api/publico/clases/{id}?c=código` | público |
 | POST | `/api/publico/asistencia` | público |
 

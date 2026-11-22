@@ -68,6 +68,13 @@ def usuario_actual(
     return usuario
 
 
+def solo_docente(usuario: Usuario = Depends(usuario_actual)) -> Usuario:
+    """Dependencia: exige rol docente (iniciar clases, proyectar QR, pasar lista)."""
+    if usuario.rol != Rol.DOCENTE:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el docente de la sección puede hacer esto")
+    return usuario
+
+
 def solo_coordinador(usuario: Usuario = Depends(usuario_actual)) -> Usuario:
     """Dependencia: exige rol coordinador."""
     if usuario.rol != Rol.COORDINADOR:

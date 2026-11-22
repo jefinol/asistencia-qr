@@ -57,14 +57,37 @@ def test_alcance_solo_docentes(client, token_coord):
 def test_editar_seccion_conserva_asistencias(client, token_coord):
     d = client.post("/api/docentes", headers=token_coord,
                     json={"usuario": "nuevo_doc", "nombre": "Nuevo Docente", "clave": "secreta1"}).json()
-    s = client.post("/api/secciones", headers=token_coord, json={"codigo": "ED-1", "asignatura": "Química"}).json()
-    clase = client.post(f"/api/secciones/{s['id']}/clases", headers=token_coord, json={}).json()
+    otro = client.post("/api/docentes", headers=token_coord,
+                       json={"usuario": "doc_saliente", "nombre": "Docente Saliente", "clave": "secreta1"}).json()
+    s = client.post("/api/secciones", headers=token_coord,
+                    json={"codigo": "ED-1", "asignatura": "Química", "docente_id": otro["id"]}).json()
+    _, h_otro = _login(client, "doc_saliente", "secreta1")
+    clase = client.post(f"/api/secciones/{s['id']}/clases", headers=h_otro, json={}).json()
     assert clase["fecha"] == hoy().isoformat()  # la fecha sale de la zona horaria configurada
 
     r = client.put(f"/api/secciones/{s['id']}", headers=token_coord,
                    json={"codigo": "ed-2", "asignatura": "Química General", "docente_id": d["id"]})
     assert r.json()["codigo"] == "ED-2" and r.json()["docente"]["id"] == d["id"]
     assert len(client.get(f"/api/secciones/{s['id']}/clases", headers=token_coord).json()) == 1
-    # El nuevo docente ahora ve la sección.
+    # El nuevo docente ahora ve la sección; el anterior ya no.
     _, hd = _login(client, "nuevo_doc", "secreta1")
     assert [x["codigo"] for x in client.get("/api/secciones", headers=hd).json()] == ["ED-2"]
+    assert client.get(f"/api/clases/{clase['id']}/qr", headers=h_otro).status_code == 404
+
+
+def test_coordinador_no_inicia_clases_ni_proyecta(client, token_coord):
+    """Iniciar clases, proyectar el QR y pasar lista son tareas del docente."""
+    d = client.post("/api/docentes", headers=token_coord,
+                    json={"usuario": "doc_qr", "nombre": "Docente QR", "clave": "secreta1"}).json()
+    s = client.post("/api/secciones", headers=token_coord,
+                    json={"codigo": "QR-1", "asignatura": "Redes", "docente_id": d["id"]}).json()
+    assert client.post(f"/api/secciones/{s['id']}/clases", headers=token_coord, json={}).status_code == 403
+
+    _, hd = _login(client, "doc_qr", "secreta1")
+    clase = client.post(f"/api/secciones/{s['id']}/clases", headers=hd, json={}).json()
+    for metodo, ruta in [("get", f"/api/clases/{clase['id']}/qr"), ("post", f"/api/clases/{clase['id']}/cerrar"),
+                         ("get", f"/api/clases/{clase['id']}/asistentes"), ("delete", f"/api/clases/{clase['id']}")]:
+        assert getattr(client, metodo)(ruta, headers=token_coord).status_code == 403, ruta
+    # Pero sí ve el historial y las estadísticas.
+    assert len(client.get(f"/api/secciones/{s['id']}/clases", headers=token_coord).json()) == 1
+    assert client.get(f"/api/secciones/{s['id']}/estadisticas", headers=token_coord).status_code == 200

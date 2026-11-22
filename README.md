@@ -2,8 +2,8 @@
 
 Sistema de control de asistencia por código QR. Proyecto final de Programación III.
 
-- El **coordinador** crea y edita secciones (código + asignatura + docente), gestiona a los docentes (incluido reiniciar claves olvidadas) y carga la matrícula (CSV/Excel).
-- El **docente** inicia una clase y proyecta un QR que **cambia cada 30 s**.
+- El **coordinador** crea y edita secciones (código + asignatura + docente), gestiona a los docentes (incluido reiniciar claves olvidadas) y carga la matrícula (CSV/Excel). No inicia clases ni proyecta el QR.
+- El **docente** (y solo él) inicia una clase y proyecta un QR que **cambia cada 30 s**.
 - El **alumno** escanea el QR con su teléfono, escribe su cédula y queda marcado. No necesita cuenta.
 - Docente y coordinador ven dashboards con porcentajes de asistencia y exportan reportes en **PDF** o **Excel**.
 
@@ -32,7 +32,10 @@ asistencia-qr/
 │       └── pages/           Login, Inicio, SeccionDetalle, Proyectar, Asistir, Docentes, Cuenta
 ├── ejemplos/                archivo de matrícula de ejemplo
 ├── docs/ARQUITECTURA.md
-├── Dockerfile               imagen única (build de React + backend)
+├── api/index.py             entrada de la API en Vercel (reutiliza backend/app)
+├── vercel.json              configuración de despliegue en Vercel
+├── requirements.txt         dependencias Python para Vercel (generado con uv)
+├── Dockerfile               imagen única para desarrollo/VPS (build de React + backend)
 └── docker-compose.yml
 ```
 
@@ -54,7 +57,7 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
-API en http://localhost:8000 · documentación interactiva en http://localhost:8000/docs
+API en http://localhost:8000 · documentación interactiva en http://localhost:8000/api/docs
 
 **Frontend** (terminal 2):
 
@@ -80,33 +83,88 @@ Abrir http://localhost:5173. Usuario inicial: `coordinador` / `coordinador123` (
 cd backend && uv run pytest
 ```
 
-## Despliegue en un VPS (Docker)
+**Pruebas contra PostgreSQL** (el mismo motor de Supabase). Levanta un Postgres desechable y apunta las pruebas a él. **Nunca** uses la base de producción: las pruebas la vacían.
 
 ```bash
-cp .env.example .env
+docker run -d --rm --name pg-test -e POSTGRES_PASSWORD=test -p 55432:5432 postgres:16-alpine
 ```
-
-Editar `.env` (sobre todo `SECRET_KEY` y `ADMIN_CLAVE`) y luego:
 
 ```bash
-docker compose up -d --build
+cd backend && TEST_DATABASE_URL=postgresql://postgres:test@localhost:55432/postgres uv run pytest
 ```
 
-La app queda en el puerto 8000. La base de datos vive en el volumen `datos`, así que sobrevive a reinicios.
-
-Recomendado: poner delante un proxy con HTTPS (Caddy o Nginx). Con Caddy basta un `Caddyfile` así:
+## Despliegue en Vercel + Supabase (plan gratuito)
 
 ```
-asistencia.midominio.com {
-    reverse_proxy localhost:8000
-}
+Navegador ──► Vercel ─┬─ CDN: frontend React (frontend/dist)
+                      └─ /api/* ─► función Python (api/index.py → backend/app)
+                                            │
+                                            ▼
+                              Supabase (PostgreSQL, pooler puerto 6543)
 ```
 
-**Respaldo de la base de datos:**
+Archivos que lo hacen posible (ya están en el repo):
+
+| Archivo | Para qué |
+|---|---|
+| `vercel.json` | Compila el frontend con Vite, manda `/api/*` a la función Python y el resto a `index.html`. |
+| `api/index.py` | Función serverless: importa la misma app FastAPI de `backend/app/`. |
+| `requirements.txt` | Dependencias de Python que instala Vercel (generado desde `backend/uv.lock`). |
+
+### 1. Crear la base de datos en Supabase
+
+1. Entra a https://supabase.com y crea un proyecto en el plan **Free**. Como región, elige **East US (North Virginia)**, que es donde Vercel ejecuta las funciones por defecto, para que la API responda más rápido. Guarda la contraseña de la base de datos que te pide.
+2. En el proyecto, pulsa **Connect** y copia la cadena del **Transaction pooler**: la que usa el puerto **6543** y el host `...pooler.supabase.com`. Reemplaza `[YOUR-PASSWORD]` por tu contraseña. Tendrá esta forma:
+
+   ```
+   postgresql://postgres.<ref>:<contraseña>@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+   ```
+
+   No uses la "Direct connection": en el plan gratuito solo funciona por IPv6 y Vercel no puede alcanzarla.
+
+No hace falta crear tablas: la app las crea sola en la primera petición, junto con el usuario coordinador.
+
+### 2. Crear el proyecto en Vercel
+
+1. Entra a https://vercel.com, pulsa **Add New → Project** e importa el repositorio de GitHub `asistencia-qr`.
+2. Deja **Root Directory** en la raíz del repo. La configuración de build se toma de `vercel.json`, así que no hay que tocar nada más.
+3. En **Environment Variables**, agrega:
+
+   | Variable | Valor |
+   |---|---|
+   | `DATABASE_URL` | la cadena del pooler de Supabase (paso 1) |
+   | `SECRET_KEY` | una clave larga y aleatoria (comando abajo) |
+   | `ADMIN_USUARIO` | `coordinador` (o el que prefieran) |
+   | `ADMIN_CLAVE` | la clave inicial del coordinador |
+   | `ZONA_HORARIA` | `America/Caracas` |
+
+   Para generar la `SECRET_KEY`:
+
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+4. Pulsa **Deploy**. Al terminar, Vercel te da una URL `https://<proyecto>.vercel.app` con HTTPS incluido. Entra con `ADMIN_USUARIO` / `ADMIN_CLAVE` y cambia la clave desde "Mi cuenta".
+
+A partir de ahí, **cada `git push` a `main` vuelve a desplegar automáticamente**.
+
+### Si cambian las dependencias de Python
+
+Vercel lee `requirements.txt`, no `uv.lock`. Después de `uv add ...`, regenera el archivo:
 
 ```bash
-docker compose cp app:/app/data/asistencia.db ./respaldo.db
+cd backend && uv export --no-dev --no-hashes --no-emit-project --format requirements-txt -o ../requirements.txt
 ```
+
+### Límites del plan gratuito que deben conocer
+
+- **Supabase Free:** si el proyecto tiene poca actividad durante unos 7 días, Supabase puede pausarlo. Se reactiva desde su panel con un clic. Antes de la presentación, entren una vez para despertarlo. Mientras está pausado, la API responde con error en unos 10 segundos en vez de quedarse colgada.
+- **Vercel Hobby:** es para proyectos personales y no comerciales, así que un proyecto académico encaja. La primera petición después de un rato sin uso tarda 1 o 2 segundos más (arranque en frío).
+- **Proyector:** consulta la API cada 2 segundos mientras está abierto. Una clase de 90 minutos son unas 2.700 peticiones, muy por debajo de los límites del plan.
+
+### Alternativa: un VPS con Docker
+
+El mismo `docker compose up -d --build` de desarrollo sirve en un VPS, con SQLite en el volumen `datos`. Para tener HTTPS, pongan delante Caddy (`reverse_proxy localhost:8000`).
 
 ## Flujo de uso
 

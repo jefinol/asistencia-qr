@@ -25,7 +25,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/asistir/:claseId" element={<Asistir />} />
-      <Route path="/clases/:claseId/proyectar" element={<Privada><Proyectar /></Privada>} />
+      <Route path="/clases/:claseId/proyectar" element={<Privada rol="docente"><Proyectar /></Privada>} />
       <Route element={<Privada><Layout /></Privada>}>
         <Route path="/" element={<Inicio />} />
         <Route path="/secciones/:seccionId" element={<SeccionDetalle />} />

@@ -70,19 +70,20 @@ export default function SeccionDetalle() {
         <Tarjeta titulo="En riesgo (<75%)" valor={r.estudiantes_en_riesgo} alerta={r.estudiantes_en_riesgo > 0} />
       </div>
 
-      <section className="panel">
+      {/* Iniciar clases y proyectar el QR le corresponde solo al docente. */}
+      {!esCoordinador && <section className="panel">
         <h2>Iniciar clase</h2>
         <form className="fila" onSubmit={iniciarClase}>
           <input placeholder="Tema de hoy (opcional)" value={tema} onChange={(e) => setTema(e.target.value)} />
           <button className="primario" disabled={!r.total_estudiantes}>Iniciar y proyectar QR</button>
         </form>
-        {!r.total_estudiantes && <p className="tenue">Primero hay que cargar la matrícula.</p>}
-      </section>
+        {!r.total_estudiantes && <p className="tenue">El coordinador aún no ha cargado la matrícula.</p>}
+      </section>}
 
       <section className="panel">
         <h2>Asistencia por clase</h2>
         <GraficoAsistencia datos={est.clases.map((c) => ({ nombre: c.fecha.slice(5), porcentaje: c.porcentaje }))} />
-        <Clases clases={est.clases} accion={accion} navegar={navegar} />
+        <Clases clases={est.clases} accion={accion} navegar={navegar} esDocente={!esCoordinador} />
       </section>
 
       <section className="panel">
@@ -145,11 +146,12 @@ function EditarSeccion({ seccionId, alGuardar, alCancelar }) {
   )
 }
 
-function Clases({ clases, accion, navegar }) {
+/** Historial de clases. El coordinador solo lo consulta; las acciones son del docente. */
+function Clases({ clases, accion, navegar, esDocente }) {
   if (!clases.length) return null
   return (
     <table>
-      <thead><tr><th>Fecha</th><th>Tema</th><th>Presentes</th><th>%</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Tema</th><th>Presentes</th><th>%</th><th>Estado</th>{esDocente && <th></th>}</tr></thead>
       <tbody>
         {[...clases].reverse().map((c) => (
           <tr key={c.clase_id}>
@@ -158,7 +160,7 @@ function Clases({ clases, accion, navegar }) {
             <td>{c.presentes}</td>
             <td><Porcentaje valor={c.porcentaje} /></td>
             <td>{c.abierta ? <span className="etiqueta verde">Abierta</span> : <span className="etiqueta">Cerrada</span>}</td>
-            <td className="botones">
+            {esDocente && <td className="botones">
               <button onClick={() => navegar(`/clases/${c.clase_id}/proyectar`)}>{c.abierta ? 'Proyectar' : 'Ver lista'}</button>
               {c.abierta
                 ? <button onClick={accion(() => api(`/clases/${c.clase_id}/cerrar`, { method: 'POST' }))}>Cerrar</button>
@@ -167,7 +169,7 @@ function Clases({ clases, accion, navegar }) {
                 if (confirm('¿Eliminar esta clase y sus asistencias?'))
                   await api(`/clases/${c.clase_id}`, { method: 'DELETE' })
               })}>✕</button>
-            </td>
+            </td>}
           </tr>
         ))}
       </tbody>

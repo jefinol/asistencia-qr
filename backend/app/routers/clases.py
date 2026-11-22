@@ -1,6 +1,8 @@
 """Clases (encuentros), QR rotativo y marcaje de asistencia.
 
-Rutas privadas (docente/coordinador) bajo /api/clases y rutas PÚBLICAS para el
+Rutas privadas SOLO DEL DOCENTE de la sección (el coordinador puede ver el
+historial de clases y las estadísticas, pero no inicia clases ni proyecta QR)
+bajo /api/clases, y rutas PÚBLICAS para el
 alumno bajo /api/publico (el alumno no tiene cuenta: solo escanea y pone su cédula).
 """
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,7 +14,7 @@ from ..config import settings
 from ..database import get_db
 from ..models import Asistencia, Clase, Estudiante, Inscripcion, Usuario
 from ..schemas import (AsistenteOut, ClaseIn, ClaseOut, InfoClasePublica, MarcarIn, MarcarOut, QRActual)
-from ..security import usuario_actual
+from ..security import solo_docente, usuario_actual
 from ..services.codigo_qr import GeneradorCodigoQR
 from ..services.matricula import LectorMatricula
 from .secciones import obtener_seccion
@@ -37,7 +39,7 @@ def listar_clases(seccion_id: int, db: Session = Depends(get_db), usuario: Usuar
 
 @router.post("/secciones/{seccion_id}/clases", response_model=ClaseOut, status_code=201)
 def abrir_clase(seccion_id: int, datos: ClaseIn, db: Session = Depends(get_db),
-                usuario: Usuario = Depends(usuario_actual)):
+                usuario: Usuario = Depends(solo_docente)):
     """Crea la clase de hoy y la deja abierta para recibir asistencias."""
     seccion = obtener_seccion(db, seccion_id, usuario)
     clase = Clase(seccion_id=seccion.id, tema=datos.tema.strip())
@@ -47,12 +49,12 @@ def abrir_clase(seccion_id: int, datos: ClaseIn, db: Session = Depends(get_db),
 
 
 @router.get("/clases/{clase_id}", response_model=ClaseOut)
-def ver_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+def ver_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(solo_docente)):
     return obtener_clase(db, clase_id, usuario)
 
 
 @router.get("/clases/{clase_id}/qr", response_model=QRActual)
-def qr_actual(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+def qr_actual(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(solo_docente)):
     """El frontend del docente llama esto periódicamente para refrescar el QR proyectado."""
     clase = obtener_clase(db, clase_id, usuario)
     return QRActual(
@@ -65,7 +67,7 @@ def qr_actual(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = D
 
 
 @router.post("/clases/{clase_id}/cerrar", response_model=ClaseOut)
-def cerrar_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+def cerrar_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(solo_docente)):
     clase = obtener_clase(db, clase_id, usuario)
     clase.abierta = False
     db.commit()
@@ -73,7 +75,7 @@ def cerrar_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario 
 
 
 @router.post("/clases/{clase_id}/reabrir", response_model=ClaseOut)
-def reabrir_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+def reabrir_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(solo_docente)):
     clase = obtener_clase(db, clase_id, usuario)
     clase.abierta = True
     db.commit()
@@ -81,13 +83,13 @@ def reabrir_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario
 
 
 @router.delete("/clases/{clase_id}", status_code=204)
-def eliminar_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+def eliminar_clase(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(solo_docente)):
     db.delete(obtener_clase(db, clase_id, usuario))
     db.commit()
 
 
 @router.get("/clases/{clase_id}/asistentes", response_model=list[AsistenteOut])
-def asistentes(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
+def asistentes(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(solo_docente)):
     """Lista de toda la sección indicando quién está presente (para pasar lista manual)."""
     clase = obtener_clase(db, clase_id, usuario)
     presentes = {a.estudiante_id for a in clase.asistencias}  # set → búsqueda O(1)
@@ -100,7 +102,7 @@ def asistentes(clase_id: int, db: Session = Depends(get_db), usuario: Usuario = 
 
 @router.put("/clases/{clase_id}/asistentes/{estudiante_id}", response_model=AsistenteOut)
 def alternar_asistencia(clase_id: int, estudiante_id: int, db: Session = Depends(get_db),
-                        usuario: Usuario = Depends(usuario_actual)):
+                        usuario: Usuario = Depends(solo_docente)):
     """Marca/desmarca manualmente (alumno sin teléfono, error, etc.)."""
     clase = obtener_clase(db, clase_id, usuario)
     estudiante = next((e for e in clase.seccion.estudiantes if e.id == estudiante_id), None)
