@@ -17,7 +17,7 @@ function TablaSecciones({ secciones }) {
   return (
     <table>
       <thead>
-        <tr><th>Código</th><th>Asignatura</th><th>Docente</th><th>Estudiantes</th><th>Clases</th><th>Asistencia</th><th>En riesgo</th></tr>
+        <tr><th>Sección</th><th>Asignatura</th><th>Docente</th><th>Matrícula</th><th>Clases</th><th>Asistencia</th><th>En riesgo</th></tr>
       </thead>
       <tbody>
         {secciones.map((s) => (
@@ -45,16 +45,20 @@ function InicioCoordinador() {
       <h1>Panel del coordinador</h1>
       <div className="tarjetas">
         <Tarjeta titulo="Secciones" valor={datos.total_secciones} />
-        <Tarjeta titulo="Inscripciones" valor={datos.total_estudiantes} />
+        <Tarjeta titulo="Asignaturas" valor={datos.total_asignaturas} />
+        {/* Alumnos distintos: quien está en dos secciones cuenta una sola vez. */}
+        <Tarjeta titulo="Matrícula" valor={datos.matricula} />
         <Tarjeta titulo="Clases dictadas" valor={datos.total_clases} />
         <Tarjeta titulo="Asistencia promedio" valor={`${datos.promedio_asistencia}%`} />
       </div>
       <section className="panel">
-        <h2>Asistencia por sección</h2>
-        <GraficoAsistencia datos={datos.secciones.map((s) => ({ nombre: s.codigo, porcentaje: s.promedio_asistencia }))} />
+        <h2>Asistencia por sección y asignatura</h2>
+        <GraficoAsistencia etiquetasLargas datos={datos.secciones.map((s) => ({
+          nombre: `${s.codigo} · ${s.asignatura}`, porcentaje: s.promedio_asistencia,
+        }))} />
       </section>
       <section className="panel">
-        <h2>Secciones</h2>
+        <h2>Secciones y asignaturas</h2>
         <TablaSecciones secciones={datos.secciones} />
       </section>
       <NuevaSeccion alCrear={recargar} />

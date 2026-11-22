@@ -6,7 +6,7 @@ Diagrama entidad-relación simplificado:
        │ 1                       │ 1
        │ coordina                │ dicta
        ▼ N                       ▼ N
-    Seccion ─────────────────────┘
+    Seccion (código + asignatura) ┘
        │ 1                 N ┌──────────────┐ N            1
        ├────────────────────►│ Inscripcion  │◄──────────── Estudiante
        │                     └──────────────┘
@@ -24,7 +24,7 @@ import enum
 import secrets
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .config import hoy
@@ -72,12 +72,21 @@ class Estudiante(Base):
 
 
 class Seccion(Base):
-    """Dominio principal: una sección de una asignatura."""
+    """Dominio principal: una asignatura dictada en una sección.
+
+    Una misma sección (p. ej. "N613") cursa varias asignaturas, cada una con su
+    docente. Por eso lo único es la PAREJA (código, asignatura): puede haber
+    "N613 · Calidad y Productividad" y "N613 · Programación III", pero no dos
+    "N613 · Programación III".
+    """
 
     __tablename__ = "secciones"
+    __table_args__ = (
+        Index("uq_seccion_codigo_asignatura", "codigo", "asignatura", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    codigo: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    codigo: Mapped[str] = mapped_column(String(20), index=True)  # se repite entre asignaturas
     asignatura: Mapped[str] = mapped_column(String(120))
     coordinador_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     docente_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)

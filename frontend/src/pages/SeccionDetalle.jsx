@@ -38,7 +38,7 @@ export default function SeccionDetalle() {
   })
 
   const eliminarSeccion = accion(async () => {
-    if (!confirm(`¿Eliminar la sección ${r.codigo} con todas sus clases y asistencias?`)) return
+    if (!confirm(`¿Eliminar ${r.asignatura} de la sección ${r.codigo} con todas sus clases y asistencias?`)) return
     await api(`/secciones/${seccionId}`, { method: 'DELETE' })
     navegar('/')
   })
@@ -64,7 +64,7 @@ export default function SeccionDetalle() {
       )}
 
       <div className="tarjetas">
-        <Tarjeta titulo="Estudiantes" valor={r.total_estudiantes} />
+        <Tarjeta titulo="Matrícula" valor={r.total_estudiantes} />
         <Tarjeta titulo="Clases" valor={r.total_clases} />
         <Tarjeta titulo="Asistencia promedio" valor={`${r.promedio_asistencia}%`} />
         <Tarjeta titulo="En riesgo (<75%)" valor={r.estudiantes_en_riesgo} alerta={r.estudiantes_en_riesgo > 0} />

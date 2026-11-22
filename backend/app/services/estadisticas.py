@@ -77,8 +77,9 @@ class ReporteSeccion:
 
 @dataclass
 class ResumenGeneral:
-    total_secciones: int
-    total_estudiantes: int
+    total_secciones: int     # códigos de sección distintos (N611, N613…)
+    total_asignaturas: int   # parejas sección + asignatura
+    matricula: int           # alumnos DISTINTOS inscritos (uno en dos secciones cuenta una vez)
     total_clases: int
     promedio_asistencia: float
     secciones: list[ResumenSeccion] = field(default_factory=list)
@@ -144,13 +145,20 @@ class CalculadoraEstadisticas:
         El promedio general es PONDERADO (suma de asistencias / suma de cupos
         posibles), no el promedio simple de los porcentajes, para que una sección
         de 5 alumnos no pese igual que una de 40.
+
+        La matrícula se calcula con un CONJUNTO (set) de ids de estudiantes: un
+        alumno inscrito en N611 y en N613 (o en dos asignaturas de N613) aparece
+        en varias inscripciones, pero el conjunto lo guarda una sola vez. Lo mismo
+        para contar códigos de sección distintos. Ambos son O(n).
         """
         resumenes = [self.reporte_seccion(s).resumen for s in secciones]
         posibles = sum(r.total_estudiantes * r.total_clases for r in resumenes)
         logradas = sum(r.promedio_asistencia / 100 * r.total_estudiantes * r.total_clases for r in resumenes)
+        alumnos = {i.estudiante_id for s in secciones for i in s.inscripciones}
         return ResumenGeneral(
-            total_secciones=len(resumenes),
-            total_estudiantes=sum(r.total_estudiantes for r in resumenes),
+            total_secciones=len({s.codigo for s in secciones}),
+            total_asignaturas=len(secciones),
+            matricula=len(alumnos),
             total_clases=sum(r.total_clases for r in resumenes),
             promedio_asistencia=round(logradas * 100 / posibles, 1) if posibles else 0.0,
             secciones=resumenes,

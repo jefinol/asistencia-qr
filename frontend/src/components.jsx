@@ -51,14 +51,18 @@ export function Error({ texto }) {
   return texto ? <p className="error">{texto}</p> : null
 }
 
-/** Barras de % de asistencia; rojo si está bajo el umbral. `datos` = [{nombre, porcentaje}] */
-export function GraficoAsistencia({ datos, alto = 260 }) {
+/** Barras de % de asistencia; rojo si está bajo el umbral. `datos` = [{nombre, porcentaje}]
+ *  `etiquetasLargas`: inclina las etiquetas (p. ej. "N613 · Programación III") para que no se encimen. */
+export function GraficoAsistencia({ datos, alto = 260, etiquetasLargas = false }) {
   if (!datos.length) return <p className="tenue">Aún no hay datos para graficar.</p>
+  const ejeX = etiquetasLargas
+    ? { angle: -25, textAnchor: 'end', height: 90, interval: 0, fontSize: 11 }
+    : { fontSize: 12 }
   return (
-    <ResponsiveContainer width="100%" height={alto}>
+    <ResponsiveContainer width="100%" height={alto + (etiquetasLargas ? 60 : 0)}>
       <BarChart data={datos} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="nombre" fontSize={12} />
+        <XAxis dataKey="nombre" {...ejeX} />
         <YAxis domain={[0, 100]} unit="%" fontSize={12} />
         <Tooltip formatter={(v) => `${v}%`} />
         <ReferenceLine y={UMBRAL_RIESGO} stroke="#c0392b" strokeDasharray="4 4" />

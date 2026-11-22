@@ -5,6 +5,8 @@ y cada formato la implementa. La ruta HTTP no sabe qué formato está generando;
 solo pide `GENERADORES[formato]` y llama a `.generar(reporte)`.
 """
 import io
+import re
+import unicodedata
 from abc import ABC, abstractmethod
 
 from fpdf import FPDF
@@ -23,7 +25,11 @@ class GeneradorReporte(ABC):
     def generar(self, reporte: ReporteSeccion) -> bytes: ...
 
     def nombre_archivo(self, reporte: ReporteSeccion) -> str:
-        return f"asistencia_{reporte.resumen.codigo}_{hoy():%Y%m%d}.{self.extension}"
+        """Ej.: asistencia_N613_programacion-iii_20261122.pdf (sin acentos ni espacios)."""
+        r = reporte.resumen
+        sin_acentos = unicodedata.normalize("NFKD", r.asignatura).encode("ascii", "ignore").decode()
+        asignatura = re.sub(r"[^a-z0-9]+", "-", sin_acentos.lower()).strip("-")
+        return f"asistencia_{r.codigo}_{asignatura}_{hoy():%Y%m%d}.{self.extension}"
 
 
 class GeneradorExcel(GeneradorReporte):
@@ -76,7 +82,8 @@ class GeneradorPDF(GeneradorReporte):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Helvetica", "B", 15)
-        pdf.cell(0, 9, f"Reporte de asistencia - Sección {r.codigo}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 9, f"Reporte de asistencia - Sección {r.codigo} - {r.asignatura}"[:70],
+                 new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 11)
         for linea in (
             f"Asignatura: {r.asignatura}",

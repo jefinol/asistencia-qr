@@ -58,14 +58,15 @@ Producción:  Navegador ──► Vercel ─┬─ CDN: frontend React
 
 ```
 Usuario(id, usuario, nombre, clave_hash, rol: coordinador|docente)
-Seccion(id, codigo UNIQUE, asignatura, coordinador_id → Usuario, docente_id → Usuario)
+Seccion(id, codigo, asignatura, coordinador_id → Usuario, docente_id → Usuario)  UNIQUE(codigo, asignatura)
 Estudiante(id, cedula UNIQUE, nombres, apellidos)
 Inscripcion(id, seccion_id → Seccion, estudiante_id → Estudiante)  UNIQUE(seccion, estudiante)
 Clase(id, seccion_id → Seccion, fecha, tema, abierta, secreto)
 Asistencia(id, clase_id → Clase, estudiante_id → Estudiante, marcada_en)  UNIQUE(clase, estudiante)
 ```
 
-- **Sección** es el centro del dominio. Su `codigo` lo define el coordinador y es único.
+- **Sección** es el centro del dominio. Cada registro es una **variable compuesta: código de sección + asignatura** (p. ej. `N613 · Programación III`). Una misma sección cursa varias asignaturas, cada una con su docente, su matrícula y sus clases, así que lo único es la pareja `(codigo, asignatura)` y no el código solo. La asignatura se compara sin distinguir mayúsculas.
+- Las bases creadas con la versión anterior, donde el código era único, se migran solas al arrancar (`_migrar_codigo_de_seccion` en `main.py`).
 - Un **estudiante** se identifica por cédula y puede estar en varias secciones (relación N:M a través de **Inscripcion**, que es "la matrícula").
 - Una **Clase** es cada encuentro en que se proyecta un QR (la llamamos así para no confundirla con la "sesión" de base de datos).
 - Las restricciones `UNIQUE` hacen que la **base de datos** garantice que nadie se inscribe dos veces ni marca dos veces la misma clase, aunque lleguen dos peticiones simultáneas.
@@ -133,6 +134,7 @@ Con E estudiantes, C clases y A asistencias de una sección:
    - % sección = A / (E × C) × 100
    - **En riesgo** si % estudiante < 75 % (mínimo habitual de los reglamentos).
 4. Panel general del coordinador: promedio **ponderado** por cupos (Σ asistencias / Σ E×C), para que una sección de 5 alumnos no pese igual que una de 40.
+5. **Matrícula** = alumnos **distintos** inscritos en las secciones del coordinador. Un alumno puede estar en dos secciones, o en dos asignaturas de la misma sección, así que se cuentan los ids en un **conjunto** (`set`) y no se suman las inscripciones. Igual se cuentan los códigos de sección distintos: "Secciones" son los códigos y "Asignaturas" son las parejas sección + asignatura. Todo en O(n).
 
 Complejidad: **O(A + E + C)** — lineal.
 
@@ -186,6 +188,7 @@ La documentación completa e interactiva está en `/api/docs` con el servidor co
 `backend/tests/` contiene:
 - `test_servicios.py`: pruebas unitarias del algoritmo del QR y del lector de matrícula.
 - `test_flujo.py`: recorrido completo por la API (crear docente y sección → cargar matrícula → abrir clase → alumnos marcan → estadísticas → PDF/Excel), con base de datos temporal.
+- `test_secciones.py`: varias asignaturas en una sección, rechazo de la asignatura repetida, matrícula sin duplicados y migración de una base de la versión anterior (en SQLite y PostgreSQL).
 - `test_usuarios.py`: cambio y reinicio de claves, alcance (solo se gestionan docentes), eliminación de docentes, edición de secciones y fecha según la zona horaria.
 
 ```bash

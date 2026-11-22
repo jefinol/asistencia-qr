@@ -1,6 +1,6 @@
 """Secciones: CRUD (coordinador), matrícula, estadísticas y reportes."""
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -37,19 +37,31 @@ def _validar_docente(db: Session, docente_id: int | None):
 
 
 # ---------- CRUD ----------
+def _verificar_unica(db: Session, codigo: str, asignatura: str, excepto_id: int | None = None):
+    """Una sección puede tener varias asignaturas, pero no la misma asignatura dos veces.
+
+    La comparación de la asignatura ignora mayúsculas ("Programación III" = "programación iii").
+    """
+    otra = db.scalar(select(Seccion).where(
+        Seccion.codigo == codigo, func.lower(Seccion.asignatura) == asignatura.lower()))
+    if otra and otra.id != excepto_id:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"La sección {codigo} ya tiene registrada la asignatura {otra.asignatura}")
+
+
 @router.get("/secciones", response_model=list[SeccionOut])
 def listar(db: Session = Depends(get_db), usuario: Usuario = Depends(usuario_actual)):
     campo = Seccion.coordinador_id if usuario.rol == Rol.COORDINADOR else Seccion.docente_id
-    return db.scalars(select(Seccion).where(campo == usuario.id).order_by(Seccion.codigo)).all()
+    return db.scalars(select(Seccion).where(campo == usuario.id)
+                      .order_by(Seccion.codigo, Seccion.asignatura)).all()
 
 
 @router.post("/secciones", response_model=SeccionOut, status_code=201)
 def crear(datos: SeccionIn, db: Session = Depends(get_db), coord: Usuario = Depends(solo_coordinador)):
-    codigo = datos.codigo.strip().upper()
-    if db.scalar(select(Seccion).where(Seccion.codigo == codigo)):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una sección con ese código")
+    codigo, asignatura = datos.codigo.strip().upper(), datos.asignatura.strip()
+    _verificar_unica(db, codigo, asignatura)
     _validar_docente(db, datos.docente_id)
-    seccion = Seccion(codigo=codigo, asignatura=datos.asignatura.strip(),
+    seccion = Seccion(codigo=codigo, asignatura=asignatura,
                       docente_id=datos.docente_id, coordinador_id=coord.id)
     db.add(seccion)
     db.commit()
@@ -65,12 +77,10 @@ def ver(seccion_id: int, db: Session = Depends(get_db), usuario: Usuario = Depen
 def editar(seccion_id: int, datos: SeccionIn, db: Session = Depends(get_db),
            coord: Usuario = Depends(solo_coordinador)):
     seccion = obtener_seccion(db, seccion_id, coord)
-    codigo = datos.codigo.strip().upper()
-    otra = db.scalar(select(Seccion).where(Seccion.codigo == codigo))
-    if otra and otra.id != seccion.id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una sección con ese código")
+    codigo, asignatura = datos.codigo.strip().upper(), datos.asignatura.strip()
+    _verificar_unica(db, codigo, asignatura, excepto_id=seccion.id)
     _validar_docente(db, datos.docente_id)
-    seccion.codigo, seccion.asignatura, seccion.docente_id = codigo, datos.asignatura.strip(), datos.docente_id
+    seccion.codigo, seccion.asignatura, seccion.docente_id = codigo, asignatura, datos.docente_id
     db.commit()
     return seccion
 
@@ -136,7 +146,7 @@ def retirar(seccion_id: int, estudiante_id: int, db: Session = Depends(get_db),
 # ---------- Estadísticas y reportes ----------
 @router.get("/estadisticas/general", response_model=ResumenGeneral)
 def resumen_general(db: Session = Depends(get_db), coord: Usuario = Depends(solo_coordinador)):
-    secciones = db.scalars(select(Seccion).where(Seccion.coordinador_id == coord.id).order_by(Seccion.codigo)).all()
+    secciones = db.scalars(select(Seccion).where(Seccion.coordinador_id == coord.id).order_by(Seccion.codigo, Seccion.asignatura)).all()
     return CalculadoraEstadisticas(db).resumen_general(list(secciones))
 
 

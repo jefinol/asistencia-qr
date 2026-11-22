@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
 from .config import settings
@@ -23,6 +23,26 @@ from .database import Base, SessionLocal, engine
 from .models import Rol, Usuario
 from .routers import auth, clases, secciones
 from .security import hashear_clave
+
+
+def _migrar_codigo_de_seccion():
+    """Migración única para bases creadas antes de permitir varias asignaturas por sección.
+
+    Antes el código de sección era ÚNICO (índice `ix_secciones_codigo`). Ahora lo
+    único es la pareja (código, asignatura). `create_all` no modifica tablas que
+    ya existen, así que este ajuste se hace a mano. Solo actúa si encuentra el
+    índice viejo; en bases nuevas o ya migradas no hace nada. Funciona igual en
+    SQLite y en PostgreSQL.
+    """
+    indices = inspect(engine).get_indexes("secciones")
+    viejo = next((i for i in indices if i["name"] == "ix_secciones_codigo"), None)
+    if viejo is None or not viejo.get("unique"):
+        return
+    with engine.begin() as con:  # todo o nada
+        con.execute(text("DROP INDEX ix_secciones_codigo"))
+        con.execute(text("CREATE INDEX ix_secciones_codigo ON secciones (codigo)"))
+        con.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_seccion_codigo_asignatura "
+                         "ON secciones (codigo, asignatura)"))
 
 
 def inicializar_base_de_datos():
@@ -33,6 +53,7 @@ def inicializar_base_de_datos():
     que evoluciona mucho se usarían migraciones con Alembic.
     """
     Base.metadata.create_all(engine)
+    _migrar_codigo_de_seccion()
     with SessionLocal() as db:
         if db.scalar(select(Usuario).where(Usuario.rol == Rol.COORDINADOR)) is None:
             db.add(Usuario(usuario=settings.admin_usuario, nombre="Coordinador",

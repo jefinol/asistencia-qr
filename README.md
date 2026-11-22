@@ -2,7 +2,7 @@
 
 Sistema de control de asistencia por código QR. Proyecto final de Programación III.
 
-- El **coordinador** crea y edita secciones (código + asignatura + docente), gestiona a los docentes (incluido reiniciar claves olvidadas) y carga la matrícula (CSV/Excel). No inicia clases ni proyecta el QR.
+- El **coordinador** registra cada asignatura de cada sección (p. ej. `N613 · Programación III` y `N613 · Calidad y Productividad`, cada una con su docente), gestiona a los docentes (incluido reiniciar claves olvidadas) y carga la matrícula (CSV/Excel). No inicia clases ni proyecta el QR.
 - El **docente** (y solo él) inicia una clase y proyecta un QR que **cambia cada 30 s**.
 - El **alumno** escanea el QR con su teléfono, escribe su cédula y queda marcado. No necesita cuenta.
 - Docente y coordinador ven dashboards con porcentajes de asistencia y exportan reportes en **PDF** o **Excel**.
